@@ -28,6 +28,7 @@ import { css } from '@emotion/css';
 import { useMoveAccountMutation, useSyncAndDownloadMutation } from '#accounts';
 import { isAccountFailedSync } from '#accounts/syncStatus';
 import { makeAmountFullStyle } from '#components/budget/util';
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
 import { MOBILE_NAV_HEIGHT } from '#components/mobile/MobileNavTabs';
 import { PullToRefresh } from '#components/mobile/PullToRefresh';
 import { MobilePageHeader, Page } from '#components/Page';
@@ -190,6 +191,12 @@ function AccountListItem({
                 borderRadius: 8,
                 opacity: isConnected ? 1 : 0,
               }}
+            />
+            <EntityIcon
+              icon={account.icon}
+              color={account.icon_color}
+              size={22}
+              style={{ marginRight: 8 }}
             />
             <TextOneLine
               style={{

@@ -35,6 +35,7 @@ import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
 
 import { AccountSyncCheck } from './accounts/AccountSyncCheck';
+import { AiButton } from './ai/AiButton';
 import { AnimatedRefresh } from './AnimatedRefresh';
 import { MonthCountSelector } from './budget/MonthCountSelector';
 import { Link } from './common/Link';
@@ -342,6 +343,7 @@ export function Titlebar({ style }: TitlebarProps) {
       <SpaceBetween gap={10}>
         <UncategorizedButton />
         {isDevelopmentEnvironment() && !isTestEnv && <ThemeSelector />}
+        {serverURL ? <AiButton /> : null}
         <PrivacyButton />
         <NotificationsButton />
         {serverURL ? <ServerSyncButton /> : null}

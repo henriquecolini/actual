@@ -86,6 +86,7 @@ import { AccountAutocomplete } from '#components/autocomplete/AccountAutocomplet
 import { CategoryAutocomplete } from '#components/autocomplete/CategoryAutocomplete';
 import { PayeeAutocomplete } from '#components/autocomplete/PayeeAutocomplete';
 import { TagAutocomplete } from '#components/autocomplete/TagAutocomplete';
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
 import { TransferDirectionIcon } from '#components/common/TransferDirectionIcon';
 import { getStatusProps } from '#components/schedules/StatusBadge';
 import type { StatusTypes } from '#components/schedules/StatusBadge';
@@ -894,6 +895,11 @@ const payeeIconButtonStyle = {
   color: 'inherit',
 };
 const scheduleIconStyle = { width: 13, height: 13 };
+const inlineIconStyle = {
+  display: 'inline-flex',
+  verticalAlign: 'middle',
+  marginRight: 6,
+} as const;
 const transferIconStyle = { width: 10, height: 10 };
 
 type PayeeIconsProps = {
@@ -1692,7 +1698,17 @@ const Transaction = memo(function Transaction({
             formatter={acctId => {
               const acct = acctId && getAccountsById(accounts)[acctId];
               if (acct) {
-                return acct.name;
+                return (
+                  <>
+                    <EntityIcon
+                      icon={acct.icon}
+                      color={acct.icon_color}
+                      size={16}
+                      style={inlineIconStyle}
+                    />
+                    {acct.name}
+                  </>
+                );
               }
               return '';
             }}
@@ -1922,13 +1938,26 @@ const Transaction = memo(function Transaction({
             width="flex"
             textAlign="flex"
             value={categoryId}
-            formatter={value =>
-              value
-                ? (getCategoriesById(categoryGroups)[value]?.name ?? '')
-                : transaction.id
-                  ? t('Categorize')
-                  : ''
-            }
+            formatter={value => {
+              if (!value) {
+                return transaction.id ? t('Categorize') : '';
+              }
+              const category = getCategoriesById(categoryGroups)[value];
+              if (!category) {
+                return '';
+              }
+              return (
+                <>
+                  <EntityIcon
+                    icon={category.icon}
+                    color={category.icon_color}
+                    size={16}
+                    style={inlineIconStyle}
+                  />
+                  {category.name}
+                </>
+              );
+            }}
             exposed={focusedField === 'category'}
             onExpose={name => !isPreview && onEdit(id, name)}
             valueStyle={

@@ -37,6 +37,8 @@ export type DbAccount = {
     | 'not-configured'
     | null;
   account_group_id?: DbAccountGroup['id'] | null;
+  icon?: string | null;
+  icon_color?: string | null;
 };
 
 export type DbAccountGroup = {
@@ -64,6 +66,8 @@ export type DbCategory = {
   cleanup_def?: JsonString | null;
   template_settings?: { source: 'notes' | 'ui' };
   tombstone: 1 | 0;
+  icon?: string | null;
+  icon_color?: string | null;
 };
 
 export type DbCategoryGroup = {

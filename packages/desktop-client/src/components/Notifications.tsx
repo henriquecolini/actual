@@ -15,6 +15,7 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { css } from '@emotion/css';
 
+import { AI_DOCK_WIDTH, useAiPanelOpen } from '#ai/panelStore';
 import { removeNotification } from '#notifications/notificationsSlice';
 import type { NotificationWithId } from '#notifications/notificationsSlice';
 import { useDispatch, useSelector } from '#redux';
@@ -372,6 +373,9 @@ export function Notifications({ style }: { style?: CSSProperties }) {
   const { isNarrowWidth } = useResponsive();
   const notifications = useSelector(state => state.notifications.notifications);
   const notificationInset = useSelector(state => state.notifications.inset);
+  // Keep toasts clear of the docked AI assistant.
+  const aiPanelOpen = useAiPanelOpen();
+  const aiDockOffset = aiPanelOpen && !isNarrowWidth ? AI_DOCK_WIDTH : 0;
 
   // Only show the last N notifications (newest first) for z-axis stacking
   // Reverse so newest notification (last in array) becomes index 0 (front)
@@ -385,7 +389,7 @@ export function Notifications({ style }: { style?: CSSProperties }) {
         position: 'fixed',
         bottom: notificationInset?.bottom || 20,
         top: notificationInset?.top,
-        right: notificationInset?.right || 13,
+        right: (notificationInset?.right || 13) + aiDockOffset,
         left: notificationInset?.left || (isNarrowWidth ? 13 : undefined),
         zIndex: MODAL_Z_INDEX - 1,
         width: isNarrowWidth ? undefined : 400,

@@ -26,6 +26,7 @@ import { css, cx } from '@emotion/css';
 
 import { useEnvelopeSheetValue } from '#components/budget/envelope/EnvelopeBudgetComponents';
 import { makeAmountFullStyle } from '#components/budget/util';
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
 import { FinancialText } from '#components/FinancialText';
 import { useCategories } from '#hooks/useCategories';
 import { useSheetValue } from '#hooks/useSheetValue';
@@ -402,10 +403,20 @@ function CategoryItem({
       {...props}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <TextOneLine>
-          {item.name}
-          {item.hidden || item.group?.hidden ? ' ' + t('(hidden)') : ''}
-        </TextOneLine>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', minWidth: 0 }}
+        >
+          <EntityIcon
+            icon={item.icon}
+            color={item.icon_color}
+            size={16}
+            style={{ marginRight: 6 }}
+          />
+          <TextOneLine>
+            {item.name}
+            {item.hidden || item.group?.hidden ? ' ' + t('(hidden)') : ''}
+          </TextOneLine>
+        </View>
         <TextOneLine
           style={{
             display: !showBalances ? 'none' : undefined,

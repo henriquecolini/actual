@@ -19,6 +19,8 @@ export type APIAccountEntity = Pick<AccountEntity, 'id' | 'name'> & {
   closed?: boolean;
   balance_current?: number | null;
   account_group_id?: string | null;
+  icon?: string | null;
+  icon_color?: string | null;
 };
 
 export const accountModel = {
@@ -32,6 +34,8 @@ export const accountModel = {
       closed: account.closed ? true : false,
       balance_current: account.balance_current ?? null,
       account_group_id: account.account_group_id ?? null,
+      icon: account.icon ?? null,
+      icon_color: account.icon_color ?? null,
     };
   },
 
@@ -70,6 +74,8 @@ export type APICategoryEntity = Pick<
   'id' | 'name' | 'is_income' | 'hidden'
 > & {
   group_id: string;
+  icon?: string | null;
+  icon_color?: string | null;
 };
 
 export const categoryModel = {
@@ -82,6 +88,8 @@ export const categoryModel = {
       is_income: category.is_income ? true : false,
       hidden: category.hidden ? true : false,
       group_id: category.group,
+      icon: category.icon ?? null,
+      icon_color: category.icon_color ?? null,
     };
   },
 

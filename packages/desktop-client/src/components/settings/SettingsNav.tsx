@@ -7,6 +7,7 @@ import { theme } from '@actual-app/components/theme';
 import { spacing } from '@actual-app/components/tokens';
 import { View } from '@actual-app/components/view';
 
+import { useServerURL } from '#components/ServerContext';
 import {
   getDefaultSidebarMenuItems,
   getSidebarMenuItemPath,
@@ -23,6 +24,8 @@ export function SettingsNav() {
   const { isNarrowWidth } = useResponsive();
   const { settingsItems, isItemAvailable } = useSidebarMenu();
   const itemDetails = useSidebarMenuItemDetails();
+  // The assistant runs on the sync server, so there is nothing to set up without one.
+  const serverURL = useServerURL();
 
   const menuItems = isNarrowWidth
     ? getDefaultSidebarMenuItems().filter(
@@ -61,6 +64,13 @@ export function SettingsNav() {
           to={getSidebarMenuItemPath(item.id, false)}
         />
       ))}
+      {serverURL && (
+        <SettingsNavLink
+          title={t('AI Assistant')}
+          Icon={SvgCog}
+          to="/settings/ai"
+        />
+      )}
       <SettingsNavLink
         title={t('Advanced')}
         Icon={SvgSettingsSliderAlternate}

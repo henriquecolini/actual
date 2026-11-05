@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import { bootstrap } from './account-db';
 import * as accountApp from './app-account';
 import * as adminApp from './app-admin';
+import * as aiApp from './app-ai';
 import * as akahuApp from './app-akahu/app-akahu.js';
 import * as corsApp from './app-cors-proxy';
 import * as enableBankingApp from './app-enablebanking/app-enablebanking';
@@ -68,6 +69,7 @@ app.use('/pluggyai', pluggai.handlers);
 app.use('/akahu', akahuApp.handlers);
 app.use('/enablebanking', enableBankingApp.handlers);
 app.use('/secret', secretApp.handlers);
+app.use('/ai', aiApp.handlers);
 
 if (config.get('corsProxy.enabled')) {
   app.use('/cors-proxy', corsApp.handlers);

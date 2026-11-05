@@ -12,6 +12,7 @@ import { View } from '@actual-app/components/view';
 import * as monthUtils from '@actual-app/core/shared/months';
 import type { CategoryEntity } from '@actual-app/core/types/models';
 
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
 import { useNavigate } from '#hooks/useNavigate';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 import { pushModal } from '#modals/modalsSlice';
@@ -66,10 +67,18 @@ function IncomeCategoryName({ category, onEdit }: IncomeCategoryNameProps) {
             justifyContent: 'flex-start',
           }}
         >
+          <EntityIcon
+            icon={category.icon}
+            color={category.icon_color}
+            size={20}
+            style={{ marginRight: 6 }}
+          />
           <Text
             style={{
               ...styles.lineClamp(2),
-              width: sidebarColumnWidth,
+              width: category.icon
+                ? `calc(${sidebarColumnWidth} - 26px)`
+                : sidebarColumnWidth,
               textAlign: 'left',
               ...styles.smallText,
             }}

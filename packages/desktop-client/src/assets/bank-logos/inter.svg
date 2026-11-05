@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="31.999998"
+   height="31.999998"
+   viewBox="0 0 8.466666 8.4666661"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+     id="defs1"><style
+       id="style1">
+      .cls-1 {
+        fill: #0a0080;
+      }
+
+      .cls-1, .cls-2, .cls-3 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        fill: #00bcff;
+      }
+    </style></defs><g
+     id="layer1"
+     transform="translate(-36.93333)"><path
+       d="m 38.421576,6.6721451 h 2.779106 l 0.01478,-0.076952 -2.740628,-0.5682498 0.05326,-0.3048299 2.740623,0.5919257 0.02368,-0.106558 -2.58967,-1.1246693 0.112463,-0.3107551 2.595616,1.0920801 0.05327,-0.076937 -2.299604,-1.7077295 0.23676,-0.3729092 2.284845,1.7076774 0.06806,-0.09174 -1.799444,-2.2848441 0.440992,-0.3581232 1.784634,2.1783189 0.07697,-0.068071 -1.038844,-2.6429593 0.630408,-0.266364 0.979658,2.5896705 0.07696,-0.023685 V 1.5756154 h 1.006249 v 5.3154353 h -5.490108 z"
+       fill="#ea7100"
+       stroke-width="0.914903"
+       id="path1-20"
+       style="fill:#ffffff" /></g><style
+     type="text/css"
+     id="style2">
+	.st0{fill:#EA1D25;}
+</style></svg>

@@ -11,4 +11,6 @@ export type CategoryEntity = {
   sort_order?: number;
   tombstone?: boolean;
   hidden?: boolean;
+  icon?: string | null; // "<set>:<name>", e.g. "tabler:shopping-cart"
+  icon_color?: string | null; // hex background color
 };

@@ -1,0 +1,50 @@
+{
+  "name": "@actual-app/mcp",
+  "version": "26.11.0",
+  "description": "MCP server that lets AI assistants read (and propose changes to) an Actual Budget",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/actualbudget/actual.git",
+    "directory": "packages/mcp-server"
+  },
+  "bin": {
+    "actual-mcp": "./dist/mcp.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/mcp.js",
+  "imports": {
+    "#analysis": "./src/analysis.ts",
+    "#api": "./src/api.ts",
+    "#data": "./src/data.ts",
+    "#format": "./src/format.ts",
+    "#registry": "./src/registry.ts"
+  },
+  "exports": {
+    ".": "./dist/mcp.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest --run",
+    "typecheck": "tsgo -b"
+  },
+  "dependencies": {
+    "@actual-app/api": "workspace:*",
+    "@iconify-json/tabler": "^1.2.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@typescript/native-preview": "beta",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

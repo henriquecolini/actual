@@ -16,6 +16,7 @@ import { View } from '@actual-app/components/view';
 import type { AccountEntity } from '@actual-app/core/types/models';
 import { css, cx } from '@emotion/css';
 
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
 import { useAccounts } from '#hooks/useAccounts';
 
 import { Autocomplete } from './Autocomplete';
@@ -295,7 +296,15 @@ function AccountItem({
       data-highlighted={highlighted || undefined}
       {...props}
     >
-      <TextOneLine>{item.name}</TextOneLine>
+      <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+        <EntityIcon
+          icon={item.icon}
+          color={item.icon_color}
+          size={16}
+          style={{ marginRight: 6 }}
+        />
+        <TextOneLine>{item.name}</TextOneLine>
+      </View>
     </button>
   );
 }

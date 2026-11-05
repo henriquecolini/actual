@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { IconPicker } from '#components/common/EntityIcon/IconPicker';
 import { MobileSheet } from '#components/mobile/MobileSheet';
 import { MobileSheetNotes } from '#components/mobile/MobileSheetNotes';
 import { MobileSheetRow } from '#components/mobile/MobileSheetRow';
@@ -26,6 +28,7 @@ export function AccountMenuModal({
   onReconcile,
 }: AccountMenuModalProps) {
   const { t } = useTranslation();
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const account = useAccount(accountId);
   const { data: accounts = [] } = useAccounts();
   const notes = useNotes(`account-${accountId}`);
@@ -59,53 +62,78 @@ export function AccountMenuModal({
         <>
           {notes && <MobileSheetNotes notes={notes} />}
 
-          <MobileSheetSection>
-            {!isEditingTitle && (
-              <MobileSheetRow label={t('Rename')} onPress={editTitle} />
-            )}
-            <MobileSheetRow
-              label={t('Edit notes')}
-              onPress={() => onEditNotes?.(account.id)}
-            />
-            {onReconcile && (
-              <MobileSheetRow
-                label={t('Reconcile')}
-                onPress={() => onReconcile()}
+          {iconPickerOpen ? (
+            <MobileSheetSection title={t('Icon')}>
+              <IconPicker
+                allowBanks
+                value={{
+                  icon: account.icon ?? null,
+                  color: account.icon_color ?? null,
+                }}
+                onChange={({ icon, color }) =>
+                  onSave?.({ ...account, icon, icon_color: color })
+                }
               />
-            )}
-            <MobileSheetRow
-              label={
-                showBalances === 'true'
-                  ? t('Hide running balance')
-                  : t('Show running balance')
-              }
-              onPress={() => {
-                setShowBalances(showBalances === 'true' ? 'false' : 'true');
-              }}
-            />
-            <MobileSheetRow
-              label={
-                hideReconciled !== 'true'
-                  ? t('Hide reconciled transactions')
-                  : t('Show reconciled transactions')
-              }
-              onPress={() => {
-                setHideReconciled(hideReconciled === 'true' ? 'false' : 'true');
-              }}
-            />
-            {account.closed ? (
               <MobileSheetRow
-                label={t('Reopen account')}
-                onPress={() => onReopenAccount?.(account.id)}
+                label={t('Done')}
+                onPress={() => setIconPickerOpen(false)}
               />
-            ) : (
+            </MobileSheetSection>
+          ) : (
+            <MobileSheetSection>
+              {!isEditingTitle && (
+                <MobileSheetRow label={t('Rename')} onPress={editTitle} />
+              )}
               <MobileSheetRow
-                label={t('Close account')}
-                isDestructive
-                onPress={() => onCloseAccount?.(account.id)}
+                label={t('Change icon')}
+                onPress={() => setIconPickerOpen(true)}
               />
-            )}
-          </MobileSheetSection>
+              <MobileSheetRow
+                label={t('Edit notes')}
+                onPress={() => onEditNotes?.(account.id)}
+              />
+              {onReconcile && (
+                <MobileSheetRow
+                  label={t('Reconcile')}
+                  onPress={() => onReconcile()}
+                />
+              )}
+              <MobileSheetRow
+                label={
+                  showBalances === 'true'
+                    ? t('Hide running balance')
+                    : t('Show running balance')
+                }
+                onPress={() => {
+                  setShowBalances(showBalances === 'true' ? 'false' : 'true');
+                }}
+              />
+              <MobileSheetRow
+                label={
+                  hideReconciled !== 'true'
+                    ? t('Hide reconciled transactions')
+                    : t('Show reconciled transactions')
+                }
+                onPress={() => {
+                  setHideReconciled(
+                    hideReconciled === 'true' ? 'false' : 'true',
+                  );
+                }}
+              />
+              {account.closed ? (
+                <MobileSheetRow
+                  label={t('Reopen account')}
+                  onPress={() => onReopenAccount?.(account.id)}
+                />
+              ) : (
+                <MobileSheetRow
+                  label={t('Close account')}
+                  isDestructive
+                  onPress={() => onCloseAccount?.(account.id)}
+                />
+              )}
+            </MobileSheetSection>
+          )}
         </>
       )}
     </MobileSheet>

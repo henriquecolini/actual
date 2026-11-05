@@ -115,6 +115,7 @@
     "#style/*": "./src/style/*.ts",
     "#notes/*": "./src/notes/*.tsx",
     "#accounts/*": "./src/accounts/*.ts",
+    "#ai/*": "./src/ai/*.ts",
     "#app/*": "./src/app/*.ts",
     "#budget/*": "./src/budget/*.ts",
     "#budgetfiles/*": "./src/budgetfiles/*.ts",
@@ -146,6 +147,9 @@
     "vrt": "cross-env VRT=true npx playwright test --browser=chromium",
     "playwright": "playwright",
     "typecheck": "tsgo -b && tsc-strict"
+  },
+  "dependencies": {
+    "@iconify-json/tabler": "^1.2.43"
   },
   "devDependencies": {
     "@actual-app/components": "workspace:*",

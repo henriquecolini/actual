@@ -17,6 +17,7 @@ export type AuthHandlers = {
   'subscribe-sign-in': typeof signIn;
   'subscribe-sign-out': typeof signOut;
   'subscribe-set-token': typeof setToken;
+  'get-user-token': typeof getUserToken;
   'enable-openid': typeof enableOpenId;
   'get-openid-config': typeof getOpenIdConfig;
   'enable-password': typeof enablePassword;
@@ -32,6 +33,7 @@ app.method('subscribe-change-password', changePassword);
 app.method('subscribe-sign-in', signIn);
 app.method('subscribe-sign-out', signOut);
 app.method('subscribe-set-token', setToken);
+app.method('get-user-token', getUserToken);
 app.method('enable-openid', enableOpenId);
 app.method('get-openid-config', getOpenIdConfig);
 app.method('enable-password', enablePassword);
@@ -141,6 +143,11 @@ async function getLoginMethods() {
     return { methods: res.methods };
   }
   return { error: 'internal' };
+}
+
+/** The session token, for the app's own calls to endpoints the worker has no handler for. */
+async function getUserToken(): Promise<string | null> {
+  return (await asyncStorage.getItem('user-token')) ?? null;
 }
 
 async function getUser() {

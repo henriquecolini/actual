@@ -15,6 +15,7 @@ COPY packages/desktop-client/package.json packages/desktop-client/package.json
 COPY packages/desktop-electron/package.json packages/desktop-electron/package.json
 COPY packages/eslint-plugin-actual/package.json packages/eslint-plugin-actual/package.json
 COPY packages/loot-core/package.json packages/loot-core/package.json
+COPY packages/mcp-server/package.json packages/mcp-server/package.json
 COPY packages/sync-server/package.json packages/sync-server/package.json
 COPY packages/plugins-service/package.json packages/plugins-service/package.json
 COPY packages/vite-plugin-peggy/package.json packages/vite-plugin-peggy/package.json
@@ -44,17 +45,30 @@ RUN yarn build:server
 # Focus the workspaces in production mode (including @actual-app/web you just built)
 RUN yarn workspaces focus @actual-app/sync-server --production
 
-# Remove symbolic links for @actual-app/web and @actual-app/sync-server
-RUN rm -rf ./node_modules/@actual-app/web ./node_modules/@actual-app/sync-server
+# Remove symbolic links for @actual-app/web, @actual-app/sync-server and the
+# packages the AI assistant runs from (the MCP server and the API it embeds)
+RUN rm -rf ./node_modules/@actual-app/web ./node_modules/@actual-app/sync-server \
+    ./node_modules/@actual-app/mcp ./node_modules/@actual-app/api
 
 # Copy in the @actual-app/web artifacts manually, so we don't need the entire packages folder
 COPY ./packages/desktop-client/package.json ./node_modules/@actual-app/web/package.json
 RUN cp -r ./packages/desktop-client/build ./node_modules/@actual-app/web/build
 
+# The AI assistant's MCP server and the (self-contained) API bundle it uses
+COPY ./packages/mcp-server/package.json ./node_modules/@actual-app/mcp/package.json
+RUN cp -r ./packages/mcp-server/dist ./node_modules/@actual-app/mcp/dist
+COPY ./packages/api/package.json ./node_modules/@actual-app/api/package.json
+RUN cp -r ./packages/api/dist ./node_modules/@actual-app/api/dist
+
 FROM node:24.22.1-bookworm-slim AS prod
 
 # Minimal runtime dependencies
 RUN apt-get update && apt-get install -y tini && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
+# Claude Code CLI, used by the AI assistant for people who connect their Claude
+# subscription. Pin a version with --build-arg CLAUDE_CODE_VERSION=x.y.z
+ARG CLAUDE_CODE_VERSION=latest
+RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} && npm cache clean --force
 
 # Create a non-root user
 ARG USERNAME=actual

@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import type { CSSProperties, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -13,11 +13,16 @@ import type {
   CategoryGroupEntity,
 } from '@actual-app/core/types/models';
 
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
+import { IconPickerPopover } from '#components/common/EntityIcon/IconPicker';
 import { InputCell } from '#components/table';
 import { useContextMenu } from '#hooks/useContextMenu';
 import { useGlobalPref } from '#hooks/useGlobalPref';
 
 import { SidebarCategoryButtons } from './SidebarCategoryButtons';
+
+const ICON_SIZE = 16;
+const ICON_GAP = 3;
 
 type SidebarCategoryProps = {
   innerRef: Ref<HTMLDivElement>;
@@ -64,6 +69,10 @@ export function SidebarCategory({
 
   const temporary = category.id === 'new';
   const triggerRef = useRef(null);
+  // Stays mounted in both display and rename mode, unlike `triggerRef`.
+  const iconAnchorRef = useRef(null);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const hasIcon = !temporary && !!category.icon;
   const { handleContextMenu } = useContextMenu({
     triggerRef,
     items: [
@@ -71,6 +80,11 @@ export function SidebarCategory({
         name: 'rename',
         text: t('Rename'),
         onClick: () => onEditName(category.id),
+      },
+      !temporary && {
+        name: 'change-icon',
+        text: t('Change icon'),
+        onClick: () => setIconPickerOpen(true),
       },
       !categoryGroup?.hidden && {
         name: 'toggle-visibility',
@@ -122,62 +136,113 @@ export function SidebarCategory({
   );
 
   return (
-    <View
-      innerRef={innerRef}
-      style={{
-        width: 200 + 100 * categoryExpandedState,
-        overflow: 'hidden',
-        '& .hover-visible': {
-          display: 'none',
-        },
-        ...(!dragging &&
-          !dragPreview && {
-            '&:hover .hover-visible': {
-              display: 'flex',
-            },
-          }),
-        ...(dragging && { color: theme.pageTextSubdued }), //always visible color
-        // The zIndex here forces the the view on top of a row below
-        // it that may be "collapsed" and show a border on top
-        ...(dragPreview && {
-          backgroundColor: theme.budgetCurrentMonth,
-          zIndex: 10000,
-          borderRadius: 6,
+    <>
+      <View
+        innerRef={innerRef}
+        style={{
+          width: 200 + 100 * categoryExpandedState,
+          position: 'relative',
           overflow: 'hidden',
-        }),
-        ...style,
-      }}
-      onKeyDown={e => {
-        if (e.key === 'Enter') {
-          onEditName(null);
-          e.stopPropagation();
-        }
-      }}
-    >
-      <InputCell
-        value={category.name}
-        formatter={() => displayed}
-        width="flex"
-        exposed={editing || temporary}
-        onUpdate={value => {
-          if (temporary) {
-            if (value === '') {
-              onHideNewCategory();
-            } else if (value !== '') {
-              onSave({ ...category, name: value });
-            }
-          } else {
-            if (value !== category.name) {
-              onSave({ ...category, name: value });
-            }
+          '& .hover-visible': {
+            display: 'none',
+          },
+          ...(!dragging &&
+            !dragPreview && {
+              '&:hover .hover-visible': {
+                display: 'flex',
+              },
+            }),
+          ...(dragging && { color: theme.pageTextSubdued }), //always visible color
+          // The zIndex here forces the the view on top of a row below
+          // it that may be "collapsed" and show a border on top
+          ...(dragPreview && {
+            backgroundColor: theme.budgetCurrentMonth,
+            zIndex: 10000,
+            borderRadius: 6,
+            overflow: 'hidden',
+          }),
+          ...style,
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            onEditName(null);
+            e.stopPropagation();
           }
         }}
-        onBlur={() => onEditName(null)}
-        style={{ paddingLeft: 13, ...(isLast && { borderBottomWidth: 0 }) }}
-        inputProps={{
-          placeholder: temporary ? t('New category name') : '',
-        }}
-      />
-    </View>
+      >
+        <InputCell
+          value={category.name}
+          formatter={() => displayed}
+          width="flex"
+          exposed={editing || temporary}
+          onUpdate={value => {
+            if (temporary) {
+              if (value === '') {
+                onHideNewCategory();
+              } else if (value !== '') {
+                onSave({ ...category, name: value });
+              }
+            } else {
+              if (value !== category.name) {
+                onSave({ ...category, name: value });
+              }
+            }
+          }}
+          onBlur={() => onEditName(null)}
+          style={{
+            // Reserve room for the icon in display *and* rename mode so the text
+            // doesn't jump when editing starts.
+            paddingLeft: hasIcon ? 13 + ICON_SIZE + ICON_GAP : 13,
+            ...(isLast && { borderBottomWidth: 0 }),
+          }}
+          inputProps={{
+            placeholder: temporary ? t('New category name') : '',
+          }}
+        />
+        {!temporary && (
+          <View
+            innerRef={iconAnchorRef}
+            style={{
+              position: 'absolute',
+              left: 13,
+              top: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              opacity:
+                category.hidden || categoryGroup?.hidden ? 0.33 : undefined,
+            }}
+          >
+            {hasIcon && (
+              <Button
+                variant="bare"
+                aria-label={t('Change icon')}
+                style={{ padding: 0, borderRadius: 4 }}
+                onPress={() => setIconPickerOpen(true)}
+              >
+                <EntityIcon
+                  icon={category.icon}
+                  color={category.icon_color}
+                  size={ICON_SIZE}
+                />
+              </Button>
+            )}
+          </View>
+        )}
+      </View>
+      {iconPickerOpen && (
+        <IconPickerPopover
+          triggerRef={iconAnchorRef}
+          isOpen={iconPickerOpen}
+          onOpenChange={setIconPickerOpen}
+          value={{
+            icon: category.icon ?? null,
+            color: category.icon_color ?? null,
+          }}
+          onChange={({ icon, color }) =>
+            onSave({ ...category, icon, icon_color: color })
+          }
+        />
+      )}
+    </>
   );
 }

@@ -10,6 +10,8 @@ export type AccountEntity = {
   last_reconciled: string | null;
   tombstone: 0 | 1;
   account_group_id: AccountGroupEntity['id'] | null;
+  icon?: string | null; // "<set>:<name>", e.g. "tabler:wallet" or "bank:nubank"
+  icon_color?: string | null; // hex background color
 
   // Sync fields
   account_id: string | null;

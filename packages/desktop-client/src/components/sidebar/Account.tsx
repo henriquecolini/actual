@@ -22,6 +22,8 @@ import { css, cx } from '@emotion/css';
 
 import { useReopenAccountMutation, useUpdateAccountMutation } from '#accounts';
 import { BalanceHistoryGraph } from '#components/accounts/BalanceHistoryGraph';
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
+import { IconPickerPopover } from '#components/common/EntityIcon/IconPicker';
 import { Link } from '#components/common/Link';
 import { Notes } from '#components/Notes';
 import { DropHighlight, useDraggable, useDroppable } from '#components/sort';
@@ -118,6 +120,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
   const dispatch = useDispatch();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   const accountNote = useNotes(`account-${account?.id}`);
   const needsTooltip = !!account?.id && !isTouchDevice();
@@ -141,6 +144,11 @@ export function Account<FieldName extends SheetFields<'account'>>({
         text: t('Rename'),
         onClick: () => setIsEditing(true),
       },
+      {
+        name: 'account-change-icon',
+        text: t('Change icon'),
+        onClick: () => setIconPickerOpen(true),
+      },
       account?.closed
         ? {
             name: 'account-reopen',
@@ -155,6 +163,37 @@ export function Account<FieldName extends SheetFields<'account'>>({
           },
     ],
   });
+
+  const accountIcon = (
+    <EntityIcon
+      icon={account?.icon}
+      color={account?.icon_color}
+      size={16}
+      style={{
+        display: 'inline-flex',
+        verticalAlign: 'middle',
+        marginRight: 6,
+      }}
+    />
+  );
+
+  const iconPicker = account && iconPickerOpen && (
+    <IconPickerPopover
+      triggerRef={triggerRef}
+      isOpen={iconPickerOpen}
+      onOpenChange={setIconPickerOpen}
+      allowBanks
+      value={{
+        icon: account.icon ?? null,
+        color: account.icon_color ?? null,
+      }}
+      onChange={({ icon, color }) =>
+        updateAccount.mutate({
+          account: { id: account.id, icon, icon_color: color },
+        })
+      }
+    />
+  );
 
   const accountRow = (
     <View innerRef={dropRef} style={{ flexShrink: 0, ...outerStyle }}>
@@ -231,30 +270,40 @@ export function Account<FieldName extends SheetFields<'account'>>({
               }
               left={
                 isEditing ? (
-                  <InitialFocus>
-                    <Input
-                      style={{
-                        padding: 0,
-                        width: '100%',
-                      }}
-                      onBlur={() => setIsEditing(false)}
-                      onEnter={newAccountName => {
-                        if (newAccountName.trim() !== '') {
-                          updateAccount.mutate({
-                            account: {
-                              ...account,
-                              name: newAccountName,
-                            },
-                          });
-                        }
-                        setIsEditing(false);
-                      }}
-                      onEscape={() => setIsEditing(false)}
-                      defaultValue={name}
-                    />
-                  </InitialFocus>
+                  // Keep the icon visible while renaming so the row doesn't
+                  // shift when editing starts.
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {accountIcon}
+                    <InitialFocus>
+                      <Input
+                        style={{
+                          padding: 0,
+                          flex: 1,
+                          minWidth: 0,
+                          width: '100%',
+                        }}
+                        onBlur={() => setIsEditing(false)}
+                        onEnter={newAccountName => {
+                          if (newAccountName.trim() !== '') {
+                            updateAccount.mutate({
+                              account: {
+                                ...account,
+                                name: newAccountName,
+                              },
+                            });
+                          }
+                          setIsEditing(false);
+                        }}
+                        onEscape={() => setIsEditing(false)}
+                        defaultValue={name}
+                      />
+                    </InitialFocus>
+                  </View>
                 ) : (
-                  name
+                  <>
+                    {accountIcon}
+                    {name}
+                  </>
                 )
               }
               right={
@@ -272,84 +321,92 @@ export function Account<FieldName extends SheetFields<'account'>>({
   );
 
   if (!needsTooltip || isTestEnv) {
-    return accountRow;
+    return (
+      <>
+        {accountRow}
+        {iconPicker}
+      </>
+    );
   }
 
   return (
-    <Tooltip
-      content={
-        <View
-          style={{
-            padding: 10,
-          }}
-        >
-          <SpaceBetween
-            gap={5}
+    <>
+      <Tooltip
+        content={
+          <View
             style={{
-              justifyContent: 'space-between',
-              '& .hover-visible': {
-                opacity: 0,
-                transition: 'opacity .25s',
-              },
-              '&:hover .hover-visible': {
-                opacity: 1,
-              },
+              padding: 10,
             }}
           >
-            <Text
+            <SpaceBetween
+              gap={5}
               style={{
-                fontWeight: 'bold',
+                justifyContent: 'space-between',
+                '& .hover-visible': {
+                  opacity: 0,
+                  transition: 'opacity .25s',
+                },
+                '&:hover .hover-visible': {
+                  opacity: 1,
+                },
               }}
             >
-              {name}
-            </Text>
-            <Button
-              aria-label={t('Toggle balance history')}
-              variant="bare"
-              onClick={() =>
-                setShowBalanceHistory(
-                  showBalanceHistory === 'true' ? 'false' : 'true',
-                )
-              }
-              className="hover-visible"
-            >
-              <SpaceBetween gap={3}>
-                {showBalanceHistory === 'true' ? (
-                  <SvgArrowButtonUp1 width={10} height={10} />
-                ) : (
-                  <SvgArrowButtonDown1 width={10} height={10} />
-                )}
-              </SpaceBetween>
-            </Button>
-          </SpaceBetween>
-          {showBalanceHistory === 'true' && account && (
-            <BalanceHistoryGraph
-              accountId={account.id}
-              style={{ minWidth: 350, minHeight: 70 }}
-            />
-          )}
-          {accountNote && (
-            <Notes
-              getStyle={() => ({
-                borderTop: `1px solid ${theme.tableBorder}`,
-                padding: 0,
-                paddingTop: '0.5rem',
-                marginTop: '0.5rem',
-              })}
-              notes={accountNote}
-            />
-          )}
-        </View>
-      }
-      style={{ ...styles.tooltip, borderRadius: '0px 5px 5px 0px' }}
-      placement="right top"
-      triggerProps={{
-        delay: 1000,
-        closeDelay: 250,
-        isDisabled: isContextMenuOpen,
-      }}
-    >
-      {accountRow}
-    </Tooltip>
+              <Text
+                style={{
+                  fontWeight: 'bold',
+                }}
+              >
+                {name}
+              </Text>
+              <Button
+                aria-label={t('Toggle balance history')}
+                variant="bare"
+                onClick={() =>
+                  setShowBalanceHistory(
+                    showBalanceHistory === 'true' ? 'false' : 'true',
+                  )
+                }
+                className="hover-visible"
+              >
+                <SpaceBetween gap={3}>
+                  {showBalanceHistory === 'true' ? (
+                    <SvgArrowButtonUp1 width={10} height={10} />
+                  ) : (
+                    <SvgArrowButtonDown1 width={10} height={10} />
+                  )}
+                </SpaceBetween>
+              </Button>
+            </SpaceBetween>
+            {showBalanceHistory === 'true' && account && (
+              <BalanceHistoryGraph
+                accountId={account.id}
+                style={{ minWidth: 350, minHeight: 70 }}
+              />
+            )}
+            {accountNote && (
+              <Notes
+                getStyle={() => ({
+                  borderTop: `1px solid ${theme.tableBorder}`,
+                  padding: 0,
+                  paddingTop: '0.5rem',
+                  marginTop: '0.5rem',
+                })}
+                notes={accountNote}
+              />
+            )}
+          </View>
+        }
+        style={{ ...styles.tooltip, borderRadius: '0px 5px 5px 0px' }}
+        placement="right top"
+        triggerProps={{
+          delay: 1000,
+          closeDelay: 250,
+          isDisabled: isContextMenuOpen || iconPickerOpen,
+        }}
+      >
+        {accountRow}
+      </Tooltip>
+      {iconPicker}
+    </>
   );
 }

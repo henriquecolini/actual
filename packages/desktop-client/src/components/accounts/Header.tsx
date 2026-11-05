@@ -37,6 +37,7 @@ import { format as formatDate } from 'date-fns';
 
 import { isAccountFailedSync } from '#accounts/syncStatus';
 import { AnimatedRefresh } from '#components/AnimatedRefresh';
+import { EntityIcon } from '#components/common/EntityIcon/EntityIcon';
 import { Search } from '#components/common/Search';
 import { FilterButton } from '#components/filters/FiltersMenu';
 import { FiltersStack } from '#components/filters/FiltersStack';
@@ -641,24 +642,32 @@ function AccountNameField({
     <View style={{ flexShrink: 0, alignItems: 'center' }}>
       {editingName ? (
         <>
-          <InitialFocus>
-            <Input
-              defaultValue={accountName}
-              onEnter={handleSave}
-              onUpdate={handleSave}
-              onEscape={() => setEditingName(false)}
-              style={{
-                fontSize: 25,
-                fontWeight: 500,
-                marginTop: -3,
-                marginBottom: -4,
-                marginLeft: -6,
-                paddingTop: 2,
-                paddingBottom: 2,
-                width: Math.max(20, accountName.length) + 'ch',
-              }}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <EntityIcon
+              icon={account?.icon}
+              color={account?.icon_color}
+              size={28}
+              style={{ marginRight: 6 }}
             />
-          </InitialFocus>
+            <InitialFocus>
+              <Input
+                defaultValue={accountName}
+                onEnter={handleSave}
+                onUpdate={handleSave}
+                onEscape={() => setEditingName(false)}
+                style={{
+                  fontSize: 25,
+                  fontWeight: 500,
+                  marginTop: -3,
+                  marginBottom: -4,
+                  marginLeft: -6,
+                  paddingTop: 2,
+                  paddingBottom: 2,
+                  width: Math.max(20, accountName.length) + 'ch',
+                }}
+              />
+            </InitialFocus>
+          </View>
           {saveNameError && (
             <View style={{ color: theme.warningText }}>{saveNameError}</View>
           )}
@@ -679,6 +688,12 @@ function AccountNameField({
             },
           }}
         >
+          <EntityIcon
+            icon={account?.icon}
+            color={account?.icon_color}
+            size={28}
+            style={{ marginRight: 6 }}
+          />
           <View
             style={{
               fontSize: 25,

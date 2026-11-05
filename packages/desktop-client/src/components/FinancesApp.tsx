@@ -24,6 +24,7 @@ import { useDispatch, useSelector } from '#redux';
 
 import { UserAccessPage } from './admin/UserAccess/UserAccessPage';
 import { UserDirectoryPage } from './admin/UserDirectory/UserDirectoryPage';
+import { AiChatDock } from './ai/AiChatDock';
 import { BankSyncStatus } from './BankSyncStatus';
 import { CommandBar } from './CommandBar';
 import { ContextMenu } from './ContextMenu';
@@ -41,6 +42,7 @@ import { NarrowAlternate, WideComponent } from './responsive';
 import { useMultiuserEnabled } from './ServerContext';
 import {
   AdvancedSettings,
+  AiAssistantSettings,
   ExperimentalSettings,
   GeneralSettings,
   Settings,
@@ -400,6 +402,7 @@ export function FinancesApp() {
                     <Route path="/settings" element={<Settings />}>
                       <Route index element={<SettingsIndex />} />
                       <Route path="general" element={<GeneralSettings />} />
+                      <Route path="ai" element={<AiAssistantSettings />} />
                       <Route
                         path="schedules"
                         element={
@@ -574,6 +577,8 @@ export function FinancesApp() {
               </MobilePageHeaderProvider>
             </ScrollProvider>
           </View>
+
+          <AiChatDock />
         </View>
       </View>
     </TourProvider>

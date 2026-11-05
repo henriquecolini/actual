@@ -42,7 +42,8 @@
     "#scripts/*": "./src/scripts/*.js",
     "#services/*": "./src/services/*.js",
     "#util/title": "./src/util/title/index.js",
-    "#util/*": "./src/util/*.ts"
+    "#util/*": "./src/util/*.ts",
+    "#ai/*": "./src/ai/*.ts"
   },
   "publishConfig": {
     "imports": {
@@ -70,7 +71,8 @@
       "#scripts/*": "./build/src/scripts/*.js",
       "#services/*": "./build/src/services/*.js",
       "#util/title": "./build/src/util/title/index.js",
-      "#util/*": "./build/src/util/*.js"
+      "#util/*": "./build/src/util/*.js",
+      "#ai/*": "./build/src/ai/*.js"
     }
   },
   "scripts": {
@@ -89,7 +91,9 @@
   },
   "dependencies": {
     "@actual-app/crdt": "workspace:*",
+    "@actual-app/mcp": "workspace:*",
     "@actual-app/web": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "akahu": "^2.5.1",
     "argon2": "^0.45.1",
     "bcrypt": "^6.0.0",
@@ -126,7 +130,8 @@
     "supertest": "^7.3.1",
     "typescript-strict-plugin": "^2.4.4",
     "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "zod": "^4.6.5"
   },
   "engines": {
     "node": ">=22.19.0"

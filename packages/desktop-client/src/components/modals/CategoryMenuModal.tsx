@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { IconPicker } from '#components/common/EntityIcon/IconPicker';
 import { MobileSheet } from '#components/mobile/MobileSheet';
 import { MobileSheetDeleteConfirm } from '#components/mobile/MobileSheetDeleteConfirm';
 import { MobileSheetNotes } from '#components/mobile/MobileSheetNotes';
@@ -26,6 +28,7 @@ export function CategoryMenuModal({
   onClose,
 }: CategoryMenuModalProps) {
   const { t } = useTranslation();
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const { data: category } = useCategory(categoryId);
   const { data: categoryGroup } = useCategoryGroup(category?.group);
   const {
@@ -77,34 +80,56 @@ export function CategoryMenuModal({
           <>
             {notes && <MobileSheetNotes notes={notes} />}
 
-            <MobileSheetSection>
-              {!isEditingTitle && (
-                <MobileSheetRow label={t('Rename')} onPress={editTitle} />
-              )}
-              <MobileSheetRow
-                label={t('Edit notes')}
-                onPress={() => onEditNotes(category.id)}
-              />
-              {onEditAutomations && (
-                <MobileSheetRow
-                  label={t('Budget automations')}
-                  onPress={() => onEditAutomations(category.id)}
-                />
-              )}
-              {!categoryGroup?.hidden && (
-                <MobileSheetRow
-                  label={category.hidden ? t('Show') : t('Hide')}
-                  onPress={() =>
-                    onSave({ ...category, hidden: !category.hidden })
+            {iconPickerOpen ? (
+              <MobileSheetSection title={t('Icon')}>
+                <IconPicker
+                  value={{
+                    icon: category.icon ?? null,
+                    color: category.icon_color ?? null,
+                  }}
+                  onChange={({ icon, color }) =>
+                    onSave({ ...category, icon, icon_color: color })
                   }
                 />
-              )}
-              <MobileSheetRow
-                label={t('Delete')}
-                isDestructive
-                onPress={() => void deleteFlow.start()}
-              />
-            </MobileSheetSection>
+                <MobileSheetRow
+                  label={t('Done')}
+                  onPress={() => setIconPickerOpen(false)}
+                />
+              </MobileSheetSection>
+            ) : (
+              <MobileSheetSection>
+                {!isEditingTitle && (
+                  <MobileSheetRow label={t('Rename')} onPress={editTitle} />
+                )}
+                <MobileSheetRow
+                  label={t('Change icon')}
+                  onPress={() => setIconPickerOpen(true)}
+                />
+                <MobileSheetRow
+                  label={t('Edit notes')}
+                  onPress={() => onEditNotes(category.id)}
+                />
+                {onEditAutomations && (
+                  <MobileSheetRow
+                    label={t('Budget automations')}
+                    onPress={() => onEditAutomations(category.id)}
+                  />
+                )}
+                {!categoryGroup?.hidden && (
+                  <MobileSheetRow
+                    label={category.hidden ? t('Show') : t('Hide')}
+                    onPress={() =>
+                      onSave({ ...category, hidden: !category.hidden })
+                    }
+                  />
+                )}
+                <MobileSheetRow
+                  label={t('Delete')}
+                  isDestructive
+                  onPress={() => void deleteFlow.start()}
+                />
+              </MobileSheetSection>
+            )}
           </>
         )
       }

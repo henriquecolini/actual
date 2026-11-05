@@ -79,6 +79,8 @@ export const schema = {
     last_sync: f('string'),
     bank_sync_status: f('string'),
     account_group_id: f('id', { ref: 'account_groups' }),
+    icon: f('string'),
+    icon_color: f('string'),
   },
   account_groups: {
     id: f('id'),
@@ -97,6 +99,8 @@ export const schema = {
     template_settings: f('json', { default: { source: 'notes' } }),
     sort_order: f('float'),
     tombstone: f('boolean'),
+    icon: f('string'),
+    icon_color: f('string'),
   },
   category_groups: {
     id: f('id'),
