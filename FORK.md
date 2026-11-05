@@ -81,8 +81,35 @@ claude mcp add actual \
 ```
 
 The server is read-only plus `propose_*` tools by default. Set
-`ACTUAL_MCP_WRITE=1` to also expose tools that modify the budget
-(`update_transactions`, `set_budget_amount`, `create_category`, `set_icon`).
+`ACTUAL_MCP_WRITE=1` to also expose tools that modify the budget. They cover
+almost everything the app can do:
+
+- **Transactions:** `create_transactions`, `create_transfer`,
+  `import_transactions` (deduplicates, supports `dry_run`), `split_transaction`,
+  `update_transactions`, `delete_transactions`, `merge_transactions`.
+- **Accounts:** `create_account`, `update_account`, `close_account`,
+  `reopen_account`, `delete_account`, `reconcile_account`, `move_account`, and
+  `create/update/delete_account_group`.
+- **Payees, tags, notes:** `create/update/delete_payee`, `merge_payees`,
+  `create/update/delete_tag`, `set_notes`.
+- **Categories and budget:** `create_category`, `update_category`,
+  `delete_category`, `move_category`, `create/update/delete/move_category_group`,
+  `set_budget_amount`, `transfer_budget`, `cover_overspending`,
+  `cover_overbudgeted`, `set_carryover`, `hold_budget_for_next_month`,
+  `reset_budget_hold`, `set_icon`.
+- **Automation:** `create/update/delete_rule`, `run_rules` (apply rules to
+  existing transactions, supports `dry_run`), `create/update/delete_schedule`.
+- **Reports:** `create/update/delete_report` (read them with `list_reports`).
+
+The in-app assistant only proposes changes by default. Turn on **Settings → AI
+Assistant → Let the assistant make changes directly** (per user, off by
+default) to give it these same write tools. Its prompt then tells it to confirm
+deletes and bulk changes with a question first; that is guidance to the model,
+not a hard block. Direct changes sync immediately and are not in the app's Undo
+history.
+
+Deleting tools are destructive; keep them behind your client's permission
+prompts. Every amount is a plain decimal, like the read tools.
 Build it with `yarn workspace @actual-app/api build && yarn workspace @actual-app/mcp build`.
 
 ## Running it

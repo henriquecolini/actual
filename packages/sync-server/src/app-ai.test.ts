@@ -135,6 +135,53 @@ describe('AI assistant API', () => {
       expect(status.body.data.settings.hasSecret).toBe(false);
     });
 
+    it('keeps direct changes off by default and remembers the choice', async () => {
+      await request(handlers)
+        .put('/settings')
+        .set(ADMIN)
+        .send({ runtime: 'openai_compat', provider: 'deepseek' })
+        .expect(200);
+      let status = await request(handlers)
+        .get('/status')
+        .set(ADMIN)
+        .expect(200);
+      expect(status.body.data.settings.allowWrites).toBe(false);
+
+      await request(handlers)
+        .put('/settings')
+        .set(ADMIN)
+        .send({
+          runtime: 'openai_compat',
+          provider: 'deepseek',
+          allowWrites: true,
+        })
+        .expect(200);
+      // Saving without the flag (e.g. an older client) must not flip it.
+      await request(handlers)
+        .put('/settings')
+        .set(ADMIN)
+        .send({ runtime: 'openai_compat', provider: 'deepseek' })
+        .expect(200);
+      status = await request(handlers).get('/status').set(ADMIN).expect(200);
+      expect(status.body.data.settings.allowWrites).toBe(true);
+
+      // Someone else is unaffected.
+      status = await request(handlers).get('/status').set(USER).expect(200);
+      expect(status.body.data.settings.allowWrites).toBe(false);
+
+      await request(handlers)
+        .put('/settings')
+        .set(ADMIN)
+        .send({
+          runtime: 'openai_compat',
+          provider: 'deepseek',
+          allowWrites: false,
+        })
+        .expect(200);
+      status = await request(handlers).get('/status').set(ADMIN).expect(200);
+      expect(status.body.data.settings.allowWrites).toBe(false);
+    });
+
     it('is per user', async () => {
       const status = await request(handlers)
         .get('/status')
@@ -767,6 +814,34 @@ describe('Claude subscription runtime (with a fake claude CLI)', () => {
     const sessionId = first.args[first.args.indexOf('--session-id') + 1];
     expect(second.args[second.args.indexOf('--resume') + 1]).toBe(sessionId);
     expect(second.args).not.toContain('--session-id');
+  });
+
+  it('gives the MCP server write access and a matching prompt only when the user opted in', async () => {
+    await api('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({
+        runtime: 'claude_code',
+        model: 'sonnet',
+        secret: 'sk-ant-oat01-usertoken',
+        allowWrites: true,
+      }),
+    });
+    const created = await json(
+      await api('/conversations', {
+        method: 'POST',
+        body: JSON.stringify({ fileId: FILE_ID }),
+      }),
+    );
+    const before = fs
+      .readdirSync(stateDir)
+      .filter(f => f.startsWith('invocation-')).length;
+    await chat(created.data.id as string, 'Delete the old account');
+    const run = invocation(before + 1);
+    expect(run.mcpConfig.mcpServers.actual.env.ACTUAL_MCP_WRITE).toBe('1');
+    const prompt = run.args[run.args.indexOf('--append-system-prompt') + 1];
+    expect(prompt).toContain('edit the budget directly');
+    expect(prompt).toContain('ask_user');
+    expect(prompt).not.toContain('You cannot modify the budget directly');
   });
 
   it('explains authentication failures in plain words', async () => {

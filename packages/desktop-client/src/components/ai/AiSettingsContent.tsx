@@ -36,6 +36,7 @@ export function AiSettingsContent() {
   const [baseUrl, setBaseUrl] = useState('');
   const [model, setModel] = useState('');
   const [secret, setSecret] = useState('');
+  const [allowWrites, setAllowWrites] = useState(false);
   const [busy, setBusy] = useState<'save' | 'test' | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
     null,
@@ -50,6 +51,7 @@ export function AiSettingsContent() {
         setProvider(s.provider ?? 'openrouter');
         setBaseUrl(s.baseUrl ?? '');
         setModel(s.model ?? '');
+        setAllowWrites(s.allowWrites);
       },
       () => setLoadError(t('Could not reach the sync server.')),
     );
@@ -70,6 +72,7 @@ export function AiSettingsContent() {
         ? baseUrl
         : null,
     model: model || null,
+    allowWrites,
     ...(secret ? { secret } : {}),
   });
 
@@ -234,6 +237,37 @@ export function AiSettingsContent() {
             </datalist>
             <Text style={hint}>
               <Trans>Leave empty to use the suggested model.</Trans>
+            </Text>
+          </View>
+
+          <View style={field}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                aria-label={t('Let the assistant make changes directly')}
+                checked={allowWrites}
+                onChange={event => setAllowWrites(event.target.checked)}
+              />
+              <Text style={label}>
+                <Trans>Let the assistant make changes directly</Trans>
+              </Text>
+            </label>
+            <Text style={hint}>
+              <Trans>
+                When on, the assistant can edit your budget without asking you
+                to approve each change: transactions, accounts, categories,
+                budget amounts, rules and more. It still asks before deleting or
+                making large changes. Changes sync right away and can&apos;t be
+                undone with Undo. When off, it can only propose changes for you
+                to review.
+              </Trans>
             </Text>
           </View>
 

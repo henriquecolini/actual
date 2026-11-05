@@ -4,6 +4,13 @@ import { z } from 'zod';
 import { fromMoney } from '#format';
 import { defineTool } from '#registry';
 
+import { accountWriteTools } from './writes/accounts';
+import { automationWriteTools } from './writes/automation';
+import { categoryWriteTools } from './writes/categories';
+import { payeeWriteTools } from './writes/payees';
+import { reportWriteTools } from './writes/reports';
+import { transactionWriteTools } from './writes/transactions';
+
 // Only registered with ACTUAL_MCP_WRITE=1 (external clients such as Claude
 // Code on a desktop). The in-app assistant never gets these: it proposes.
 
@@ -12,7 +19,7 @@ export const writeTools = [
     name: 'update_transactions',
     write: true,
     description:
-      'Change the category, notes or cleared flag of existing transactions (up to 100 per call). Changes are synced to the server immediately.',
+      'Change the category, notes, cleared flag, date, amount or payee of existing transactions (up to 100 per call). Changes are synced to the server immediately.',
     shape: {
       updates: z
         .array(
@@ -21,6 +28,12 @@ export const writeTools = [
             category_id: z.string().nullable().optional(),
             notes: z.string().optional(),
             cleared: z.boolean().optional(),
+            date: z
+              .string()
+              .regex(/^\d{4}-\d{2}-\d{2}$/)
+              .optional(),
+            amount: z.number().optional().describe('Decimal; not for splits'),
+            payee_id: z.string().nullable().optional(),
           }),
         )
         .min(1)
@@ -35,6 +48,11 @@ export const writeTools = [
           }
           if (update.notes !== undefined) fields.notes = update.notes;
           if (update.cleared !== undefined) fields.cleared = update.cleared;
+          if (update.date !== undefined) fields.date = update.date;
+          if (update.amount !== undefined) {
+            fields.amount = fromMoney(update.amount);
+          }
+          if (update.payee_id !== undefined) fields.payee = update.payee_id;
           await api.updateTransaction(update.id, fields);
         }
       });
@@ -94,4 +112,11 @@ export const writeTools = [
       return { ok: true };
     },
   }),
+
+  ...transactionWriteTools,
+  ...accountWriteTools,
+  ...payeeWriteTools,
+  ...categoryWriteTools,
+  ...automationWriteTools,
+  ...reportWriteTools,
 ];

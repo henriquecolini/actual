@@ -65,6 +65,8 @@ export function buildMcpSpec(options: {
   file: BudgetFile;
   askToken: string;
   home: string;
+  /** The user opted in to the assistant changing the budget directly. */
+  allowWrites?: boolean;
 }): McpStdioSpec {
   return {
     command: process.execPath,
@@ -76,8 +78,9 @@ export function buildMcpSpec(options: {
       ACTUAL_DATA_DIR: path.join(userDir(options.userId), 'budget'),
       ACTUAL_ASK_URL: `${serverUrl()}/ai/internal/ask`,
       ACTUAL_ASK_TOKEN: options.askToken,
-      // The in-app assistant only proposes; it never gets the write tools.
-      ACTUAL_MCP_WRITE: '0',
+      // Write tools only when the user turned them on in their AI settings;
+      // otherwise the assistant can only propose changes.
+      ACTUAL_MCP_WRITE: options.allowWrites ? '1' : '0',
     }),
   };
 }
@@ -185,8 +188,12 @@ export async function runChatTurn(input: TurnInput): Promise<void> {
     file: input.file,
     askToken,
     home,
+    allowWrites: settings.allowWrites,
   });
-  const systemPrompt = buildSystemPrompt({ language: input.language });
+  const systemPrompt = buildSystemPrompt({
+    language: input.language,
+    allowWrites: settings.allowWrites,
+  });
 
   let failure: string | null = null;
   try {

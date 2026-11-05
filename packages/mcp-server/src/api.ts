@@ -49,3 +49,26 @@ export type BudgetMonth = {
 export async function budgetMonth(month: string): Promise<BudgetMonth> {
   return (await api.getBudgetMonth(month)) as unknown as BudgetMonth;
 }
+
+/**
+ * Calls an internal loot-core handler for operations the public API does not
+ * expose (moving categories, budget transfers, custom reports, ...). Only
+ * available after `api.init()`.
+ */
+export async function internalSend<T = unknown>(
+  name: string,
+  args?: unknown,
+): Promise<T> {
+  if (!api.internal) throw new Error('The Actual API is not initialised.');
+  return (await (
+    api.internal.send as (name: string, args?: unknown) => Promise<unknown>
+  )(name, args)) as T;
+}
+
+/** Currency used by the budget, needed by internal budget-transfer handlers. */
+export async function currencyCode(): Promise<string> {
+  const prefs = (await api.getPreferences()) as Record<string, unknown>;
+  return typeof prefs.defaultCurrencyCode === 'string'
+    ? prefs.defaultCurrencyCode
+    : '';
+}

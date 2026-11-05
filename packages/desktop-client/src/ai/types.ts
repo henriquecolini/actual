@@ -77,6 +77,7 @@ export type AiSettings = {
   hasSecret: boolean;
   secretPreview: string | null;
   configured: boolean;
+  allowWrites: boolean;
 };
 
 export type ApiProvider = {

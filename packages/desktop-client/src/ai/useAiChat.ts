@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { send as sendToBackend } from '@actual-app/core/platform/client/connection';
+
 import { aiApi, AiApiError, streamChat, toChatMessages } from './api';
 import { reduceEvent, settleParts } from './reduceEvent';
 import type { AiEvent, ChatMessage, Conversation, MessagePart } from './types';
@@ -185,7 +187,9 @@ export function useAiChat(fileId: string | null, language: string) {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      let usedTools = false;
       const onEvent = (event: AiEvent) => {
+        if (event.type === 'tool_use') usedTools = true;
         if (event.type === 'status') {
           patch({ status: event.message });
         } else if (event.type === 'error') {
@@ -214,6 +218,9 @@ export function useAiChat(fileId: string | null, language: string) {
         updateAssistant(assistantId, settleParts);
         patch({ running: false, status: null });
         if (abortRef.current === controller) abortRef.current = null;
+        // With direct changes on, the assistant edits the budget on the server;
+        // pull those edits in. Harmless when it only read data.
+        if (usedTools) void sendToBackend('sync').catch(() => undefined);
         // Titles are generated on the server from the first message.
         if (fileId) {
           aiApi

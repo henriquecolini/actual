@@ -106,6 +106,7 @@ function describeSettings(id: string) {
     hasSecret: Boolean(settings?.secret),
     secretPreview: settings?.secret ? maskSecret(settings.secret) : null,
     configured: Boolean(settings),
+    allowWrites: settings?.allowWrites ?? false,
   };
 }
 
@@ -138,6 +139,8 @@ function parseSettings(body: Record<string, unknown>) {
         : typeof body.secret === 'string'
           ? body.secret.trim()
           : null,
+    allowWrites:
+      typeof body.allowWrites === 'boolean' ? body.allowWrites : undefined,
   };
 }
 

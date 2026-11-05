@@ -9,6 +9,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 import type { McpConfig } from './config';
 import { buildTools, createServer } from './server';
+import { writeTools } from './tools/write';
 
 // Runs the real tools against a real (local, serverless) budget file.
 
@@ -408,6 +409,426 @@ describe('write tools', () => {
   });
 });
 
+describe('extended write tools', () => {
+  const w = (name: string) => tool(name, { writes: true });
+
+  it('manage accounts, groups and reconciliation', async () => {
+    const group = await w('create_account_group')({ name: 'Cash' });
+    const { id } = await w('create_account')({
+      name: 'Wallet',
+      initial_balance: 50,
+      account_group_id: group.id,
+    });
+    let wallet = (await api.getAccounts()).find(a => a.id === id)!;
+    expect(wallet).toMatchObject({
+      name: 'Wallet',
+      account_group_id: group.id,
+    });
+
+    await w('update_account')({ id, name: 'Pocket', offbudget: true });
+    wallet = (await api.getAccounts()).find(a => a.id === id)!;
+    expect(wallet).toMatchObject({ name: 'Pocket', offbudget: true });
+
+    const adjust = await w('reconcile_account')({ id, balance: 42.5 });
+    expect(adjust).toEqual({ adjusted: true, adjustment: -7.5 });
+    expect(await api.getAccountBalance(id)).toBe(4250);
+    expect(await w('reconcile_account')({ id, balance: 42.5 })).toMatchObject({
+      adjusted: false,
+    });
+
+    await w('move_account')({ id, before_id: ids.checking });
+    await w('update_account_group')({ id: group.id, name: 'Cash & coins' });
+    expect((await api.getAccountGroups()).map(g => g.name)).toContain(
+      'Cash & coins',
+    );
+
+    // a non-zero balance needs somewhere to go
+    await expect(w('close_account')({ id })).rejects.toThrow();
+    await w('close_account')({ id, transfer_account_id: ids.savings });
+    expect((await api.getAccounts()).find(a => a.id === id)!.closed).toBe(true);
+    await w('reopen_account')({ id });
+    expect((await api.getAccounts()).find(a => a.id === id)!.closed).toBe(
+      false,
+    );
+
+    await w('delete_account')({ id });
+    expect((await api.getAccounts()).some(a => a.id === id)).toBe(false);
+    await w('delete_account_group')({ id: group.id });
+  });
+
+  it('creates, splits, imports and deletes transactions', async () => {
+    await w('create_transactions')({
+      account_id: ids.checking,
+      transactions: [
+        { date: '2026-11-01', amount: -20, payee_name: 'Farmacia' },
+        {
+          date: '2026-11-02',
+          amount: -30,
+          payee_name: 'Mercadinho',
+          splits: [
+            { amount: -10, category_id: ids.food },
+            { amount: -20, category_id: ids.general },
+          ],
+        },
+      ],
+    });
+    const found = await tool('search_transactions')({ text: 'Farmacia' });
+    expect(found.transactions[0]).toMatchObject({ amount: -20 });
+    const farmaciaId = found.transactions[0].id;
+
+    await expect(
+      w('create_transactions')({
+        account_id: ids.checking,
+        transactions: [
+          {
+            date: '2026-11-03',
+            amount: -30,
+            splits: [{ amount: -10 }, { amount: -10 }],
+          },
+        ],
+      }),
+    ).rejects.toThrow(/add up/);
+
+    await expect(
+      w('split_transaction')({
+        id: farmaciaId,
+        splits: [{ amount: -5 }, { amount: -5 }],
+      }),
+    ).rejects.toThrow(/add up/);
+    await w('split_transaction')({
+      id: farmaciaId,
+      splits: [
+        { amount: -5, category_id: ids.food },
+        { amount: -15, category_id: ids.general },
+      ],
+    });
+    const { data: children } = (await api.aqlQuery(
+      api
+        .q('transactions')
+        .filter({ parent_id: farmaciaId })
+        .select(['amount', 'category']),
+    )) as { data: any[] };
+    expect(children.map((c: any) => c.amount).sort()).toEqual([-1500, -500]);
+
+    const preview = await w('import_transactions')({
+      account_id: ids.checking,
+      dry_run: true,
+      transactions: [
+        {
+          date: '2026-11-04',
+          amount: -9.99,
+          payee_name: 'Spotify',
+          imported_id: 'sp-1',
+        },
+      ],
+    });
+    expect(preview).toMatchObject({ dry_run: true, added: 1 });
+    expect(
+      (await tool('search_transactions')({ text: 'Spotify' })).total_matches,
+    ).toBe(0);
+    await w('import_transactions')({
+      account_id: ids.checking,
+      transactions: [
+        {
+          date: '2026-11-04',
+          amount: -9.99,
+          payee_name: 'Spotify',
+          imported_id: 'sp-1',
+        },
+      ],
+    });
+    const again = await w('import_transactions')({
+      account_id: ids.checking,
+      transactions: [
+        {
+          date: '2026-11-04',
+          amount: -9.99,
+          payee_name: 'Spotify',
+          imported_id: 'sp-1',
+        },
+      ],
+    });
+    expect(again.added).toBe(0);
+    const spotify = await tool('search_transactions')({ text: 'Spotify' });
+    expect(spotify.total_matches).toBe(1);
+
+    await w('delete_transactions')({ ids: [spotify.transactions[0].id] });
+    expect(
+      (await tool('search_transactions')({ text: 'Spotify' })).total_matches,
+    ).toBe(0);
+  });
+
+  it('create_transfer links both sides', async () => {
+    await w('create_transfer')({
+      from_account_id: ids.checking,
+      to_account_id: ids.savings,
+      amount: 25,
+      date: '2026-11-05',
+    });
+    const { data } = (await api.aqlQuery(
+      api
+        .q('transactions')
+        .filter({
+          date: '2026-11-05',
+          $or: [{ amount: -2500 }, { amount: 2500 }],
+        })
+        .select(['account', 'amount', 'transfer_id']),
+    )) as { data: any[] };
+    expect(data).toHaveLength(2);
+    expect(data.every((t: any) => t.transfer_id)).toBe(true);
+    await expect(
+      w('create_transfer')({
+        from_account_id: ids.checking,
+        to_account_id: ids.checking,
+        amount: 1,
+        date: '2026-11-05',
+      }),
+    ).rejects.toThrow(/different/);
+  });
+
+  it('update_transactions can also change date, amount and payee', async () => {
+    await w('create_transactions')({
+      account_id: ids.checking,
+      transactions: [{ date: '2026-11-02', amount: -20, payee_name: 'Feira' }],
+    });
+    const [row] = (await tool('search_transactions')({ text: 'Feira' }))
+      .transactions;
+    const payee = await w('create_payee')({ name: 'Mercadão' });
+    await w('update_transactions')({
+      updates: [
+        { id: row.id, date: '2026-11-06', amount: -25, payee_id: payee.id },
+      ],
+    });
+    const after = await tool('search_transactions')({ text: 'Mercadão' });
+    expect(after.transactions[0]).toMatchObject({
+      date: '2026-11-06',
+      amount: -25,
+    });
+    await w('delete_payee')({ id: payee.id });
+  });
+
+  it('manages payees, tags and notes', async () => {
+    const a = await w('create_payee')({ name: 'Cafe A' });
+    const b = await w('create_payee')({ name: 'Cafe B' });
+    await w('update_payee')({ id: b.id, name: 'Cafe Bee' });
+    await w('merge_payees')({ target_id: a.id, merge_ids: [b.id] });
+    const payees = await api.getPayees();
+    expect(payees.some(p => p.id === a.id)).toBe(true);
+    expect(payees.some(p => p.id === b.id)).toBe(false);
+    await expect(
+      w('merge_payees')({ target_id: a.id, merge_ids: [a.id] }),
+    ).rejects.toThrow();
+    await w('delete_payee')({ id: a.id });
+
+    const tag = await w('create_tag')({ tag: 'trip', color: '#ff0000' });
+    await w('update_tag')({ id: tag.id, description: 'Travel' });
+    expect((await api.getTags()).find(t => t.id === tag.id)).toMatchObject({
+      tag: 'trip',
+      description: 'Travel',
+    });
+    await w('delete_tag')({ id: tag.id });
+    expect((await api.getTags()).some(t => t.id === tag.id)).toBe(false);
+
+    await w('set_notes')({ id: `category-${ids.food}`, note: 'Goal: 400' });
+    expect((await tool('get_notes')({ id: `category-${ids.food}` })).note).toBe(
+      'Goal: 400',
+    );
+    await w('set_notes')({ id: `category-${ids.food}`, note: '' });
+  });
+
+  it('manages categories, groups and ordering', async () => {
+    const group = await w('create_category_group')({ name: 'Fun' });
+    const first = await w('create_category')({
+      name: 'Games',
+      group_id: group.id,
+    });
+    const second = await w('create_category')({
+      name: 'Movies',
+      group_id: group.id,
+    });
+    await w('update_category')({ id: second.id, name: 'Cinema', hidden: true });
+    await w('move_category')({
+      id: second.id,
+      group_id: group.id,
+      before_id: first.id,
+    });
+    const groups = await api.getCategoryGroups();
+    const fun = groups.find(g => g.id === group.id)!;
+    expect(fun.categories!.map(c => c.name)).toEqual(['Cinema', 'Games']);
+    expect(fun.categories![0].hidden).toBe(true);
+
+    await w('update_category_group')({ id: group.id, name: 'Leisure' });
+    const other = await w('create_category_group')({ name: 'Other' });
+    await w('move_category_group')({ id: other.id, before_id: group.id });
+    const order = (await api.getCategoryGroups()).map(g => g.id);
+    expect(order.indexOf(other.id)).toBeLessThan(order.indexOf(group.id));
+
+    await w('delete_category')({ id: first.id });
+    await w('delete_category_group')({ id: group.id });
+    await w('delete_category_group')({ id: other.id });
+    const remaining = (await api.getCategoryGroups()).map(g => g.id);
+    expect(remaining).not.toContain(group.id);
+  });
+
+  it('moves budget money between categories and manages holds and carryover', async () => {
+    const month = '2026-10';
+    await w('set_budget_amount')({ month, category_id: ids.food, amount: 300 });
+    await w('set_budget_amount')({
+      month,
+      category_id: ids.general,
+      amount: 100,
+    });
+    await w('transfer_budget')({
+      month,
+      amount: 50,
+      from: ids.food,
+      to: ids.general,
+    });
+    const view = async (id: string) =>
+      (await tool('get_budget_month')({ month })).groups
+        .flatMap((g: any) => g.categories)
+        .find((c: any) => c.id === id);
+    expect((await view(ids.food)).budgeted).toBe(250);
+    expect((await view(ids.general)).budgeted).toBe(150);
+
+    await w('transfer_budget')({
+      month,
+      amount: 10,
+      from: ids.general,
+      to: 'to-budget',
+    });
+    expect((await view(ids.general)).budgeted).toBe(140);
+    await expect(
+      w('transfer_budget')({ month, amount: 1, from: ids.food, to: ids.food }),
+    ).rejects.toThrow();
+
+    await w('set_carryover')({ month, category_id: ids.food, enabled: true });
+    expect((await view(ids.food)).carryover).toBe(true);
+
+    await w('hold_budget_for_next_month')({ month, amount: 5 });
+    await w('reset_budget_hold')({ month });
+  });
+
+  it('manages rules and applies them to existing transactions', async () => {
+    await w('create_transactions')({
+      account_id: ids.checking,
+      transactions: [
+        { date: '2026-11-07', amount: -12.3, payee_name: 'Uber Trip' },
+      ],
+    });
+    const uber = (await api.getPayees()).find(p => p.name === 'Uber Trip')!;
+    const rule = await w('create_rule')({
+      stage: 'pre',
+      conditions: [
+        { field: 'payee', op: 'is', value: uber.id },
+        { field: 'amount', op: 'lt', value: -10 },
+      ],
+      actions: [{ field: 'category', op: 'set', value: ids.general }],
+    });
+    // amounts are stored in cents but listed as decimals
+    const listed = (await tool('list_rules')()).find(
+      (r: any) => r.id === rule.id,
+    );
+    expect(listed.conditions[1]).toMatchObject({ field: 'amount', value: -10 });
+
+    const dry = await w('run_rules')({
+      dry_run: true,
+      from: '2026-11-07',
+      to: '2026-11-07',
+    });
+    expect(dry).toMatchObject({ dry_run: true, changed: 1 });
+    const stillOpen = await tool('search_transactions')({
+      text: 'Uber',
+      uncategorized: true,
+    });
+    expect(stillOpen.total_matches).toBe(1);
+
+    const run = await w('run_rules')({ from: '2026-11-07', to: '2026-11-07' });
+    expect(run.changed).toBe(1);
+    expect(
+      (await tool('search_transactions')({ text: 'Uber', uncategorized: true }))
+        .total_matches,
+    ).toBe(0);
+
+    await w('update_rule')({
+      id: rule.id,
+      actions: [{ field: 'notes', value: 'ride' }],
+    });
+    const updated = (await api.getRules()).find(r => r.id === rule.id)!;
+    expect(updated.actions[0]).toMatchObject({ field: 'notes', value: 'ride' });
+    expect(updated.conditions).toHaveLength(2);
+
+    await w('delete_rule')({ id: rule.id });
+    expect((await api.getRules()).some(r => r.id === rule.id)).toBe(false);
+  });
+
+  it('manages schedules', async () => {
+    const payee = (await api.getPayees()).find(p => p.name === 'Netflix')!;
+    const { id } = await w('create_schedule')({
+      name: 'Netflix plan',
+      date: {
+        start: '2026-12-05',
+        frequency: 'monthly',
+        patterns: [{ value: 5, type: 'day' }],
+      },
+      amount: 39.9,
+      amount_op: 'isapprox',
+      account_id: ids.checking,
+      payee_id: payee.id,
+    });
+    let listed = (await tool('list_schedules')()).find((s: any) => s.id === id);
+    expect(listed).toMatchObject({ name: 'Netflix plan', amount: 39.9 });
+
+    await w('update_schedule')({ id, amount: 45, name: 'Netflix 4K' });
+    listed = (await tool('list_schedules')()).find((s: any) => s.id === id);
+    expect(listed).toMatchObject({ name: 'Netflix 4K', amount: 45 });
+
+    await expect(
+      w('create_schedule')({
+        date: '2026-12-01',
+        amount: 10,
+        amount_op: 'isbetween',
+        account_id: ids.checking,
+        payee_id: payee.id,
+      }),
+    ).rejects.toThrow(/amount_max/);
+
+    await w('delete_schedule')({ id });
+    expect((await tool('list_schedules')()).some((s: any) => s.id === id)).toBe(
+      false,
+    );
+  });
+
+  it('manages custom reports', async () => {
+    const { id } = await w('create_report')({
+      name: 'Food by month',
+      graph_type: 'LineGraph',
+      conditions: [{ field: 'category', op: 'is', value: ids.food }],
+    });
+    let report = (await tool('list_reports')()).find((r: any) => r.id === id);
+    expect(report).toMatchObject({
+      name: 'Food by month',
+      graphType: 'LineGraph',
+      groupBy: 'Category',
+    });
+    await w('update_report')({ id, name: 'Food', interval: 'Weekly' });
+    report = (await tool('list_reports')()).find((r: any) => r.id === id);
+    expect(report).toMatchObject({
+      name: 'Food',
+      interval: 'Weekly',
+      graphType: 'LineGraph',
+    });
+    expect(report.conditions).toHaveLength(1);
+    await expect(
+      w('create_report')({ name: 'Food', start_date: '2026-01-01' }),
+    ).rejects.toThrow();
+    await w('delete_report')({ id });
+    expect((await tool('list_reports')()).some((r: any) => r.id === id)).toBe(
+      false,
+    );
+  });
+});
+
 describe('MCP protocol', () => {
   async function connectClient(options: { writes?: boolean; ask?: boolean }) {
     const server = createServer({
@@ -445,6 +866,37 @@ describe('MCP protocol', () => {
     expect(names).toEqual(
       expect.arrayContaining(['update_transactions', 'ask_user']),
     );
+  });
+
+  it('hides every write tool unless writes are enabled', async () => {
+    const readOnly = new Set(
+      (await (await connectClient({})).listTools()).tools.map(t => t.name),
+    );
+    const enabled = new Set(
+      (await (await connectClient({ writes: true })).listTools()).tools.map(
+        t => t.name,
+      ),
+    );
+    expect(writeTools.length).toBeGreaterThan(40);
+    for (const t of writeTools) {
+      expect(t.write, t.name).toBe(true);
+      expect(readOnly.has(t.name), t.name).toBe(false);
+      expect(enabled.has(t.name), t.name).toBe(true);
+    }
+  });
+
+  it('applies schema defaults, e.g. a rule action without an op', async () => {
+    const client = await connectClient({ writes: true });
+    const result = await client.callTool({
+      name: 'create_rule',
+      arguments: {
+        conditions: [{ field: 'notes', op: 'contains', value: 'rent' }],
+        actions: [{ field: 'category', value: ids.general }],
+      },
+    });
+    expect(result.isError).toBeFalsy();
+    const { id } = JSON.parse((result.content as { text: string }[])[0].text);
+    await api.deleteRule(id);
   });
 
   it('calls a tool over the protocol and returns text content', async () => {

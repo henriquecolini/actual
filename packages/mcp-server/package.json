@@ -21,7 +21,8 @@
     "#api": "./src/api.ts",
     "#data": "./src/data.ts",
     "#format": "./src/format.ts",
-    "#registry": "./src/registry.ts"
+    "#registry": "./src/registry.ts",
+    "#units": "./src/units.ts"
   },
   "exports": {
     ".": "./dist/mcp.js",

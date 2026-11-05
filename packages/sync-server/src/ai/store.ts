@@ -16,6 +16,8 @@ export type AiSettings = {
   model: string | null;
   /** Decrypted. Only ever handed to the runtime that needs it. */
   secret: string | null;
+  /** The assistant may change the budget directly instead of only proposing. */
+  allowWrites: boolean;
 };
 
 type SettingsRow = {
@@ -24,11 +26,12 @@ type SettingsRow = {
   base_url: string | null;
   model: string | null;
   secret_enc: string | null;
+  allow_writes: number;
 };
 
 export function getSettings(userId: string): AiSettings | null {
   const row = getAccountDb().first(
-    'SELECT runtime, provider, base_url, model, secret_enc FROM ai_settings WHERE user_id = ?',
+    'SELECT runtime, provider, base_url, model, secret_enc, allow_writes FROM ai_settings WHERE user_id = ?',
     [userId],
   ) as SettingsRow | null;
   if (!row) return null;
@@ -46,6 +49,7 @@ export function getSettings(userId: string): AiSettings | null {
     baseUrl: row.base_url,
     model: row.model,
     secret,
+    allowWrites: row.allow_writes === 1,
   };
 }
 
@@ -56,13 +60,16 @@ export type SettingsUpdate = {
   model?: string | null;
   /** undefined keeps the stored secret; null or '' clears it. */
   secret?: string | null;
+  /** undefined keeps the stored choice. */
+  allowWrites?: boolean;
 };
 
 export function saveSettings(userId: string, update: SettingsUpdate) {
   const existing = getAccountDb().first(
-    'SELECT secret_enc FROM ai_settings WHERE user_id = ?',
+    'SELECT secret_enc, allow_writes FROM ai_settings WHERE user_id = ?',
     [userId],
-  ) as { secret_enc: string | null } | null;
+  ) as { secret_enc: string | null; allow_writes: number } | null;
+  const allowWrites = update.allowWrites ?? existing?.allow_writes === 1;
 
   let secretEnc = existing?.secret_enc ?? null;
   if (update.secret !== undefined) {
@@ -70,14 +77,15 @@ export function saveSettings(userId: string, update: SettingsUpdate) {
   }
 
   getAccountDb().mutate(
-    `INSERT INTO ai_settings (user_id, runtime, provider, base_url, model, secret_enc, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO ai_settings (user_id, runtime, provider, base_url, model, secret_enc, allow_writes, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET
        runtime = excluded.runtime,
        provider = excluded.provider,
        base_url = excluded.base_url,
        model = excluded.model,
        secret_enc = excluded.secret_enc,
+       allow_writes = excluded.allow_writes,
        updated_at = excluded.updated_at`,
     [
       userId,
@@ -86,6 +94,7 @@ export function saveSettings(userId: string, update: SettingsUpdate) {
       update.baseUrl ?? null,
       update.model ?? null,
       secretEnc,
+      allowWrites ? 1 : 0,
       Date.now(),
     ],
   );

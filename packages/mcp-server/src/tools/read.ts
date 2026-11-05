@@ -1,10 +1,11 @@
 import * as api from '@actual-app/api';
 import { z } from 'zod';
 
-import { aql, budgetMonth } from '#api';
+import { aql, budgetMonth, internalSend } from '#api';
 import { queryTransactions } from '#data';
 import { fromMoney, today, toMoney } from '#format';
 import { defineTool } from '#registry';
+import { actionsToMoney, amountToMoney, conditionsToMoney } from '#units';
 
 const { q } = api;
 
@@ -311,7 +312,7 @@ export const readTools = [
   defineTool({
     name: 'list_rules',
     description:
-      'Automation rules (conditions and actions) that run on transactions.',
+      'Automation rules (conditions and actions) that run on transactions. Amounts are decimals.',
     shape: {},
     handler: async () => {
       const rules = await api.getRules();
@@ -319,8 +320,8 @@ export const readTools = [
         id: r.id,
         stage: r.stage,
         conditions_op: r.conditionsOp,
-        conditions: r.conditions,
-        actions: r.actions,
+        conditions: conditionsToMoney(r.conditions),
+        actions: actionsToMoney(r.actions),
       }));
     },
   }),
@@ -338,12 +339,27 @@ export const readTools = [
         next_date: s.next_date,
         completed: s.completed,
         posts_transaction: s.posts_transaction,
-        amount: s.amount,
+        amount: amountToMoney(s.amount),
         amount_op: s.amountOp,
         account: s.account,
         payee: s.payee,
       }));
     },
+  }),
+
+  defineTool({
+    name: 'list_account_groups',
+    description: 'Groups the accounts are organised in (sidebar sections).',
+    shape: {},
+    handler: async () => api.getAccountGroups(),
+  }),
+
+  defineTool({
+    name: 'list_reports',
+    description:
+      'Saved custom reports (charts and tables on the Reports page) and their settings.',
+    shape: {},
+    handler: async () => internalSend('report/get'),
   }),
 
   defineTool({
@@ -358,7 +374,10 @@ export const readTools = [
     description:
       'Notes the user wrote. Ids: "category-<id>", "account-<id>", "budget-<YYYY-MM>". Category notes often hold goals or instructions.',
     shape: { id: z.string() },
-    handler: async ({ id }) => ({ id, note: await api.getNote(id) }),
+    handler: async ({ id }) => {
+      const found = await api.getNote(id);
+      return { id, note: found?.note ?? null };
+    },
   }),
 
   defineTool({

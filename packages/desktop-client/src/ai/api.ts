@@ -70,6 +70,8 @@ export type SettingsInput = {
   model?: string | null;
   /** Omit to keep the saved secret; '' clears it. */
   secret?: string;
+  /** Omit to keep the saved choice. */
+  allowWrites?: boolean;
 };
 
 export const aiApi = {
